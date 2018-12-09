@@ -13,6 +13,9 @@ with open('data.json') as json_data:
     data_dict = json.load(json_data)
     seriesLink = data_dict['serieslink']
     searchLink = data_dict['searchlink']
+    host = data_dict['host']
+    port = data_dict['port']
+    threaded = data_dict['threaded']
 
 
 # function to get the token from the API key for the tvdb API
@@ -84,13 +87,17 @@ def getSerieList(serieName):
 
     series = []
 
+    #providing the JWT
     headers = {"Authorization": "Bearer " + getToken()}
 
+    #asking for the right langage
     if 'Accept-Language' in request.headers:
         headers['Accept-Language'] = request.headers['Accept-Language']
 
+    #sending the request
     data = requests.get(url, headers=headers).json()
 
+    #if there is an answer we can fetch it
     if 'data' in data:
         for serie in data["data"]:
             series.append(getSerie(serie["id"]))
@@ -141,4 +148,5 @@ def fetchSerie(entry):
 
 ##################################
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8080, threaded=True)
+    #doesn't seems to work correctly on windows we put the host and the port
+    app.run(host=host, port=port, threaded=threaded)

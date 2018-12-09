@@ -1,5 +1,8 @@
 {
 "apikey": "BMQP6TTS0FJXZHXQ",
 "serieslink": "https://api.thetvdb.com/series/",
-"searchlink": "https://api.thetvdb.com/search/series?name="
+"searchlink": "https://api.thetvdb.com/search/series?name=",
+  "host" : "0.0.0.0",
+  "port" : 8080,
+  "threaded": true
 }
