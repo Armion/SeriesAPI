@@ -91,12 +91,12 @@ def getSerieList(serieName):
         for serie in data["data"]:
             series.append(getSerie(serie["id"]))
 
-    return jsonify(series)
+    return json.dumps(series, ensure_ascii=False).encode('utf8')
 
 @app.route('/series/api/v1.0/<int:id>', methods=['GET'])
 def getSerieById(id):
 
-    return jsonify(getSerie(id))
+    return json.dumps(getSerie(id), ensure_ascii=False).encode('utf8')
 
 def getSerie(id):
 
@@ -129,8 +129,6 @@ def fetchSerie(entry):
         serie["id"] = entry["id"]
 
     serie["actors"] = getActors(entry["id"])
-
-    print(serie)
 
     return serie
 
