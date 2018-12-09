@@ -1,80 +1,115 @@
 import requests
 import json
 
-from flask import Flask, jsonify, abort, make_response, request
+from flask import Flask, jsonify, request
+from cachetools import cached, TTLCache
 
 app = Flask(__name__)
 
-
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
+# let's cache the token for one day (the expiration time for the API)
+tokenCached = TTLCache(maxsize=1, ttl=86300)
 
 
-@app.route('/movies/api/v1.0', methods=['GET'])
-def get_token():
-    url = 'https://api.thetvdb.com/login'
-
-    post_fields = {"apikey": "BMQP6TTS0FJXZHXQ"}
-
-    r = requests.post(url, json=post_fields)
-
-    data = r.json()
-
-    print(data["token"])
-
-
-    return r.content
-
+# function to get the token from the API key for the tvdb API
+@cached(tokenCached)
 def getToken():
     url = 'https://api.thetvdb.com/login'
-    # post_fields = {"apikey":"HDOCBES5IGL47V4B","username":"zarmion5ry", "userkey": "0QLEERFW5DYUCHBW"}
-    post_fields = {"apikey": "BMQP6TTS0FJXZHXQ"}
 
-    r = requests.post(url, json=post_fields)
+    with open('data.json') as json_data:
+        data_dict = json.load(json_data)
+        api_key = data_dict['apikey']
+
+    post_body = {"apikey": api_key}
+
+    r = requests.post(url, json=post_body)
 
     data = r.json()
 
     return data["token"]
 
 
-def getMoviePicture(id):
+# function to get the thumbnail if it exist
+def getThumbnail(id):
+    # the url to get the picture of a serie from the API
     url = "https://api.thetvdb.com/series/" + str(id) + "/images/query?keyType=poster"
+
+    # puting the token to the header
     headers = {"Authorization": "Bearer " + getToken()}
 
-    r = requests.get(url, headers=headers)
+    # request the pictures
+    data = requests.get(url, headers=headers).json()
 
-    data = r.json()
-
-    if 'data' in data and 'thumbnail' in data['data']:
-        return "https://www.thetvdb.com/banners/" + data["data"][0]['thumbnail']
+    if 'data' in data:
+        # should use a while loop, it's cleaner. browsing the answer looking for a thumbnail if there is an answer
+        for picture in data["data"]:
+            if 'thumbnail' in picture:
+                return "https://www.thetvdb.com/banners/" + data["data"][0]['thumbnail']
 
     return ""
 
 
+# function to get the actors of a serie
+def getActors(id):
+
+    actors = []
+    # the url to get the actors of a series from the API
+    url = "https://api.thetvdb.com/series/" + str(id) + "/actors"
+
+    # puting the token to the header
+    headers = {"Authorization": "Bearer " + getToken()}
+
+    # request the actors list
+    data = requests.get(url, headers=headers).json()
+
+    if 'data' in data:
+        # should use a while loop, it's cleaner. browsing the answer looking for a thumbnail if there is an answer
+        for actor in data["data"]:
+            if actor["sortOrder"] == 1:
+                actors.append({
+                    "name": actor["name"],
+                    "role": actor["role"]
+                })
+
+    return actors
+
+
+# route to research a serie, return a json containing a list
 @app.route('/movies/api/v1.0/search/<string:serieName>', methods=['GET'])
 def get_movie(serieName):
     url = 'https://api.thetvdb.com/search/series?name=' + serieName
-    jsonAnswer = {}
+
+    series = []
 
     headers = {"Authorization": "Bearer " + getToken()}
 
     if 'Accept-Language' in request.headers:
         headers['Accept-Language'] = request.headers['Accept-Language']
 
-    r = requests.get(url, headers=headers)
+    data = requests.get(url, headers=headers).json()
 
-    data = r.json()
+    if 'data' in data:
+        for serie in data["data"]:
+            series.append(fetchSerie(serie))
 
-    idSerie = data["data"][0]["id"]
-
-    jsonAnswer["idSerie"] = idSerie
-    jsonAnswer["name"] = data["data"][0]["seriesName"]
-    jsonAnswer["thumbnail"] = getMoviePicture(idSerie)
-    jsonAnswer["synopsis"] = data["data"][0]["overview"]
-
-    return jsonify(jsonAnswer)
+    return jsonify(series)
 
 
+# getting the relevant data from the api
+def fetchSerie(entry):
+    serie = {}
+    # if they exist we fetch the values
+    if 'seriesName' in entry:
+        serie["name"] = entry["seriesName"]
+    if 'overview' in entry:
+        serie["synopsis"] = entry["overview"]
+    if 'banner' in entry:
+        serie["thumbnail"] = getThumbnail(entry["id"])
+
+    serie["actors"] = getActors(entry["id"])
+
+    return serie
+
+
+##################################
 if __name__ == '__main__':
     app.run()
