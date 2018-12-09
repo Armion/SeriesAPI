@@ -74,8 +74,8 @@ def getActors(id):
 
 
 # route to research a serie, return a json containing a list
-@app.route('/movies/api/v1.0/search/<string:serieName>', methods=['GET'])
-def get_movie(serieName):
+@app.route('/series/api/v1.0/search/<string:serieName>', methods=['GET'])
+def getSerieList(serieName):
     url = 'https://api.thetvdb.com/search/series?name=' + serieName
 
     series = []
@@ -89,10 +89,29 @@ def get_movie(serieName):
 
     if 'data' in data:
         for serie in data["data"]:
-            series.append(fetchSerie(serie))
+            series.append(getSerie(serie["id"]))
 
     return jsonify(series)
 
+@app.route('/series/api/v1.0/<int:id>', methods=['GET'])
+def getSerieById(id):
+
+    return jsonify(getSerie(id))
+
+def getSerie(id):
+
+    url = 'https://api.thetvdb.com/series/' + str(id)
+    headers = {"Authorization": "Bearer " + getToken()}
+
+    if 'Accept-Language' in request.headers:
+        headers['Accept-Language'] = request.headers['Accept-Language']
+
+    data = requests.get(url, headers=headers).json()
+
+    if 'data' in data:
+        return fetchSerie(data["data"])
+
+    return data
 
 # getting the relevant data from the api
 def fetchSerie(entry):
@@ -104,12 +123,18 @@ def fetchSerie(entry):
         serie["synopsis"] = entry["overview"]
     if 'banner' in entry:
         serie["thumbnail"] = getThumbnail(entry["id"])
+    if 'imdbId' in entry:
+        serie["imbId"] = entry["imdbId"]
+    if 'id' in entry:
+        serie["id"] = entry["id"]
 
     serie["actors"] = getActors(entry["id"])
+
+    print(serie)
 
     return serie
 
 
 ##################################
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0", port=8080, threaded=True)
