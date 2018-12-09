@@ -1,3 +1,5 @@
 {
-"apikey": "BMQP6TTS0FJXZHXQ"
+"apikey": "BMQP6TTS0FJXZHXQ",
+"serieslink": "https://api.thetvdb.com/series/",
+"searchlink": "https://api.thetvdb.com/search/series?name="
 }

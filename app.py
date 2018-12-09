@@ -9,6 +9,11 @@ app = Flask(__name__)
 # let's cache the token for one day (the expiration time for the API)
 tokenCached = TTLCache(maxsize=1, ttl=86300)
 
+with open('data.json') as json_data:
+    data_dict = json.load(json_data)
+    seriesLink = data_dict['serieslink']
+    searchLink = data_dict['searchlink']
+
 
 # function to get the token from the API key for the tvdb API
 @cached(tokenCached)
@@ -16,8 +21,8 @@ def getToken():
     url = 'https://api.thetvdb.com/login'
 
     with open('data.json') as json_data:
-        data_dict = json.load(json_data)
-        api_key = data_dict['apikey']
+        dataDic = json.load(json_data)
+        api_key = dataDic['apikey']
 
     post_body = {"apikey": api_key}
 
@@ -31,7 +36,7 @@ def getToken():
 # function to get the thumbnail if it exist
 def getThumbnail(id):
     # the url to get the picture of a serie from the API
-    url = "https://api.thetvdb.com/series/" + str(id) + "/images/query?keyType=poster"
+    url = seriesLink + str(id) + "/images/query?keyType=poster"
 
     # puting the token to the header
     headers = {"Authorization": "Bearer " + getToken()}
@@ -50,10 +55,9 @@ def getThumbnail(id):
 
 # function to get the actors of a serie
 def getActors(id):
-
     actors = []
     # the url to get the actors of a series from the API
-    url = "https://api.thetvdb.com/series/" + str(id) + "/actors"
+    url = seriesLink + str(id) + "/actors"
 
     # puting the token to the header
     headers = {"Authorization": "Bearer " + getToken()}
@@ -76,7 +80,7 @@ def getActors(id):
 # route to research a serie, return a json containing a list
 @app.route('/series/api/v1.0/search/<string:serieName>', methods=['GET'])
 def getSerieList(serieName):
-    url = 'https://api.thetvdb.com/search/series?name=' + serieName
+    url = searchLink + serieName
 
     series = []
 
@@ -93,16 +97,17 @@ def getSerieList(serieName):
 
     return json.dumps(series, ensure_ascii=False).encode('utf8')
 
+
 @app.route('/series/api/v1.0/<int:id>', methods=['GET'])
 def getSerieById(id):
-
     return json.dumps(getSerie(id), ensure_ascii=False).encode('utf8')
 
-def getSerie(id):
 
-    url = 'https://api.thetvdb.com/series/' + str(id)
+def getSerie(id):
+    url = seriesLink + str(id)
     headers = {"Authorization": "Bearer " + getToken()}
 
+    # let's avoid to give a json in the wrong langage
     if 'Accept-Language' in request.headers:
         headers['Accept-Language'] = request.headers['Accept-Language']
 
@@ -112,6 +117,7 @@ def getSerie(id):
         return fetchSerie(data["data"])
 
     return data
+
 
 # getting the relevant data from the api
 def fetchSerie(entry):
